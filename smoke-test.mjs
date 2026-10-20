@@ -70,6 +70,10 @@ console.log('渲染 button :', buttons.length);
 console.log('含站点标题  :', text.includes('GALLERY') && text.includes('画廊'));
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u;
 console.log('页面无 emoji:', !EMOJI.test(text));
+// 字标画在 canvas 上，DOM 里只有 aria-label，不能查 textContent
+console.log('开始页字标  :', !!win.document.querySelector('[aria-label="ZION"]'));
+console.log('开始页提示  :', text.includes('点击任意位置进入画廊') || text.includes('Click anywhere'));
+console.log('Canvas 元素 :', win.document.querySelectorAll('canvas').length);
 console.log('背景是否黑底:', win.document.body.innerHTML.includes('bg-canvas'));
 console.log('运行时错误  :', errors.length ? errors.slice(0, 5) : '无');
 
@@ -88,3 +92,8 @@ if (cssFile) {
   };
   for (const k in checks) console.log((checks[k] ? '✅' : '❌'), k);
 }
+
+// 必须显式退出：framer-motion 的 repeat:Infinity 动画会让 event loop 一直有活，
+// 进程不会自然结束（表现为被外层 kill，退出码 137，输出全丢）。
+win.close();
+process.exit(errors.length ? 1 : 0);

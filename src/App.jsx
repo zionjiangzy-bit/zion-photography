@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar.jsx';
 import Masonry from './components/Masonry.jsx';
 import Lightbox from './components/Lightbox.jsx';
 import { AddModal, EditModal, PasswordModal } from './components/Modals.jsx';
+import Intro from './components/Intro.jsx';
 import BlurText from './bits/BlurText.jsx';
 
 import { UI, CATEGORIES, catLabel } from './lib/i18n.js';
@@ -31,6 +32,7 @@ export default function App() {
   const [showPw, setShowPw] = useState(false);
   const [lbId, setLbId] = useState(null);
   const [drag, setDrag] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   const importInput = useRef(null);
   const toastTimer = useRef(null);
@@ -58,6 +60,12 @@ export default function App() {
       });
     }
   }, [reload]);
+
+  // 开始页期间锁住背景滚动
+  useEffect(() => {
+    document.body.style.overflow = entered ? '' : 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [entered]);
 
   useEffect(() => {
     document.documentElement.lang = lang === 'zh' ? 'zh' : 'en';
@@ -324,6 +332,10 @@ export default function App() {
         onClose={() => setLbId(null)}
         onStep={lbStep}
       />
+
+      <AnimatePresence>
+        {!entered && <Intro lang={lang} t={t} onEnter={() => setEntered(true)} />}
+      </AnimatePresence>
 
       <AnimatePresence>
         {toast && (

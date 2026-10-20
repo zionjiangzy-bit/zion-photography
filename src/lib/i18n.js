@@ -71,6 +71,8 @@ export const UI = {
     unlocked: '已解锁，可以编辑了',
     locked: '已锁定编辑',
     sessionExpired: '登录已过期，请重新输入密码',
+    enterHint: '点击任意位置进入画廊',
+    introSub: 'Zion 的摄影记录',
     all: '全部'
   },
   en: {
@@ -110,6 +112,8 @@ export const UI = {
     unlocked: 'Unlocked - you can edit now',
     locked: 'Editing locked',
     sessionExpired: 'Session expired, please enter the password again',
+    enterHint: 'Click anywhere to enter the gallery',
+    introSub: "Zion's Photography",
     all: 'All'
   }
 };

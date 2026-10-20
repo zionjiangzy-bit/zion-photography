@@ -18,9 +18,10 @@ const PORT = process.env.PORT || 8765;
 // 改密码：在 Cloudflare/Render 等平台配环境变量 ADMIN_PASSWORD=你的新密码，
 // 或改下面的 DEFAULT_PASSWORD_HASH 为 hashPassword('你的新密码') 的输出。
 const ADMIN_SALT = 'zion-foto::';
-const DEFAULT_PASSWORD = 'zion2026';
+// 密码不以明文存：下面是 sha256(ADMIN_SALT + 密码)
+// 换密码：node -e "console.log(require('crypto').createHash('sha256').update('zion-foto::新密码').digest('hex'))"
 const DEFAULT_PASSWORD_HASH =
-  '2ceb809f88ba87fade71121bc12a740979ff28c122b472c2bd92d61e4620f13f'; // sha256(salt + 'zion2026')
+  'e25edcdb0e661577b5d8f1e65fd6ac856b57563c5ea2a10521bfe72bb53a3298';
 
 function hashPassword(pw) {
   return crypto.createHash('sha256').update(ADMIN_SALT + String(pw)).digest('hex');

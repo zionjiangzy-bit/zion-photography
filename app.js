@@ -40,18 +40,55 @@
     folder: 'zion'
   };
 
+  // Cloudinary 免费账户单张上限 10MB；原片动辄 20-50MB，必须先压缩
+  var MAX_SIDE = 2400;        // 最长边像素
+  var JPEG_QUALITY = 0.85;    // 起始质量
+  var MAX_BYTES = 9 * 1024 * 1024;  // 压到 9MB 以下留余量
+
+  function compressImage(blob) {
+    return new Promise(function (resolve) {
+      // 小图直接传，不做处理
+      if (!blob || blob.size <= 1.5 * 1024 * 1024) { resolve(blob); return; }
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        try {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if (w >= h && w > MAX_SIDE) { h = Math.round(h * MAX_SIDE / w); w = MAX_SIDE; }
+          else if (h > MAX_SIDE) { w = Math.round(w * MAX_SIDE / h); h = MAX_SIDE; }
+          var canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          var q = JPEG_QUALITY;
+          (function attempt() {
+            canvas.toBlob(function (out) {
+              if (!out) { resolve(blob); return; }          // 压缩失败就用原图
+              if (out.size > MAX_BYTES && q > 0.5) { q -= 0.1; attempt(); return; }
+              resolve(out);
+            }, 'image/jpeg', q);
+          })();
+        } catch (e) { resolve(blob); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(blob); };
+      img.src = url;
+    });
+  }
+
   function cloudinaryUpload(blob, filename) {
-    var endpoint = 'https://api.cloudinary.com/v1_1/' + CLOUDINARY.cloudName + '/image/upload';
-    var fd = new FormData();
-    fd.append('file', blob, filename || 'photo.jpg');
-    fd.append('upload_preset', CLOUDINARY.uploadPreset);
-    if (CLOUDINARY.folder) fd.append('folder', CLOUDINARY.folder);
-    return fetch(endpoint, { method: 'POST', body: fd }).then(function (r) {
-      return r.json().then(function (j) {
-        if (!j.secure_url) {
-          throw new Error((j.error && j.error.message) || 'Cloudinary upload failed');
-        }
-        return { url: j.secure_url, publicId: j.public_id };
+    return compressImage(blob).then(function (b) {
+      var endpoint = 'https://api.cloudinary.com/v1_1/' + CLOUDINARY.cloudName + '/image/upload';
+      var fd = new FormData();
+      fd.append('file', b, filename || 'photo.jpg');
+      fd.append('upload_preset', CLOUDINARY.uploadPreset);
+      if (CLOUDINARY.folder) fd.append('folder', CLOUDINARY.folder);
+      return fetch(endpoint, { method: 'POST', body: fd }).then(function (r) {
+        return r.json().then(function (j) {
+          if (!j.secure_url) {
+            throw new Error((j.error && j.error.message) || 'Cloudinary upload failed');
+          }
+          return { url: j.secure_url, publicId: j.public_id };
+        });
       });
     });
   }
@@ -463,56 +500,69 @@
         alert(err.message);
         return;
       }
-      var imported = 0, skipped = 0, mac = 0, unknown = 0;
-      var chain = Promise.resolve();
+      var tasks = [];
+      var skipped = 0, mac = 0, unknown = 0;
       entries.forEach(function (e) {
-        chain = chain.then(function () {
-          if (e.name.charAt(e.name.length - 1) === '/') return;
-          if (e.name.indexOf('__MACOSX') !== -1) { mac++; return; }
-          var segs = e.name.split('/');
-          var fname = segs[segs.length - 1];
-          if (fname.charAt(0) === '.' || fname.indexOf('._') === 0) { mac++; return; }
-          var lower = e.name.toLowerCase();
-          var ext = lower.lastIndexOf('.') >= 0 ? lower.slice(lower.lastIndexOf('.') + 1) : '';
-          if (IMG_EXT.indexOf(ext) === -1) { skipped++; return; }
-          var folder = segs.length >= 2 ? segs[segs.length - 2] : '';
-          var category = FOLDER_MAP[folder];
-          if (!category) { unknown++; return; }
-          return readEntry(buf, e).then(function (data) {
-            var mime = 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
-            var blob = new Blob([data], { type: mime });
-            return cloudinaryUpload(blob, fname).then(function (up) {
-              return apiCreate({
-                filename: fname,
-                url: up.url,
-                publicId: up.publicId,
-                category: category,
-                captionZh: '',
-                captionEn: ''
-              });
-            }).catch(function () {
-              // Cloudinary failed for this one - store it on the server instead
-              return apiCreate({
-                filename: fname,
-                base64: bytesToBase64(data),
-                category: category,
-                captionZh: '',
-                captionEn: ''
-              });
-            }).then(function () {
-              imported++;
-              if (imported % 5 === 0) {
-                showToast(t('importing') + ' ' + imported + (lang === 'zh' ? ' 张' : ' done'));
-              }
-            });
-          });
-        });
+        if (e.name.charAt(e.name.length - 1) === '/') return;
+        if (e.name.indexOf('__MACOSX') !== -1) { mac++; return; }
+        var segs = e.name.split('/');
+        var fname = segs[segs.length - 1];
+        if (fname.charAt(0) === '.' || fname.indexOf('._') === 0) { mac++; return; }
+        var lower = e.name.toLowerCase();
+        var ext = lower.lastIndexOf('.') >= 0 ? lower.slice(lower.lastIndexOf('.') + 1) : '';
+        if (IMG_EXT.indexOf(ext) === -1) { skipped++; return; }
+        var folder = segs.length >= 2 ? segs[segs.length - 2] : '';
+        var category = FOLDER_MAP[folder];
+        if (!category) { unknown++; return; }
+        tasks.push({ e: e, fname: fname, ext: ext, category: category });
       });
-      chain.then(function () {
+
+      var imported = 0, failed = 0;
+      var CONCURRENCY = 4;   // 同时传 4 张
+      var cursor = 0;
+
+      function runNext() {
+        if (cursor >= tasks.length) return Promise.resolve();
+        var task = tasks[cursor++];
+        return readEntry(buf, task.e).then(function (data) {
+          var mime = 'image/' + (task.ext === 'jpg' ? 'jpeg' : task.ext);
+          var blob = new Blob([data], { type: mime });
+          return cloudinaryUpload(blob, task.fname).then(function (up) {
+            return apiCreate({
+              filename: task.fname,
+              url: up.url,
+              publicId: up.publicId,
+              category: task.category,
+              captionZh: '',
+              captionEn: ''
+            });
+          }).catch(function () {
+            // Cloudinary failed for this one - store it on the server instead
+            return apiCreate({
+              filename: task.fname,
+              base64: bytesToBase64(data),
+              category: task.category,
+              captionZh: '',
+              captionEn: ''
+            });
+          }).then(function () {
+            imported++;
+            showToast(t('importing') + ' ' + imported + ' / ' + tasks.length);
+          });
+        }).catch(function () {
+          failed++;
+        }).then(runNext);
+      }
+
+      var pool = [];
+      for (var i = 0; i < CONCURRENCY; i++) pool.push(runNext());
+
+      Promise.all(pool).then(function () {
         renderGallery();
         var msg = (lang === 'zh'
           ? t('importDone') + '：' + imported + ' 张'
           : t('importDone') + ': ' + imported + ' photos')
+          + (failed ? (lang === 'zh' ? '，失败 ' + failed + ' 张' : ', ' + failed + ' failed') : '')
           + (skipped + mac ? (lang === 'zh' ? '，跳过 RAW/元数据 ' + (skipped + mac) + ' 个'
             : ', skipped ' + (skipped + mac) + ' raw/meta') : '')
           + (unknown ? (lang === 'zh' ? '，未归类 ' + unknown + ' 个' : ', unmatched ' + unknown) : '');

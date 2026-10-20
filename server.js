@@ -101,12 +101,23 @@ function handleApi(req, res, url) {
   if (req.method === 'POST' && p === '/api/photos') {
     readBody(req, 80 * 1024 * 1024).then((raw) => {
       const body = JSON.parse(raw);
-      if (!body.base64) { sendJSON(res, 400, { error: 'missing base64' }); return; }
+      if (!body.base64 && !body.url) {
+        sendJSON(res, 400, { error: 'missing base64 or url' });
+        return;
+      }
       const ext = (String(body.filename || 'x.jpg').split('.').pop() || 'jpg')
         .toLowerCase().replace(/[^a-z0-9]/g, '');
       const id = crypto.randomBytes(8).toString('hex');
-      const fname = id + '.' + ext;
-      fs.writeFileSync(path.join(UPLOADS, fname), Buffer.from(body.base64, 'base64'));
+
+      // Prefer Cloudinary URL; fall back to storing the file locally.
+      let fname = null;
+      if (body.url) {
+        fname = body.publicId ? String(body.publicId).replace(/[^a-zA-Z0-9._-]/g, '') : null;
+      } else {
+        fname = id + '.' + ext;
+        fs.writeFileSync(path.join(UPLOADS, fname), Buffer.from(body.base64, 'base64'));
+      }
+
       const db = loadDB();
       const photo = {
         id: id,
@@ -114,6 +125,8 @@ function handleApi(req, res, url) {
         captionZh: body.captionZh || '',
         captionEn: body.captionEn || '',
         filename: fname,
+        url: body.url || null,
+        publicId: body.publicId || null,
         ext: ext,
         createdAt: Date.now()
       };

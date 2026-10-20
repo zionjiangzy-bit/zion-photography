@@ -33,6 +33,35 @@
 
   var IMG_EXT = ['jpg','jpeg','png','webp','gif','bmp','tif','tiff','heic'];
 
+  // ---- Cloudinary (unsigned direct upload) ----
+  var CLOUDINARY = {
+    cloudName: 'kqgp212o',
+    uploadPreset: 'zion_photos',
+    folder: 'zion'
+  };
+
+  function cloudinaryUpload(blob, filename) {
+    var endpoint = 'https://api.cloudinary.com/v1_1/' + CLOUDINARY.cloudName + '/image/upload';
+    var fd = new FormData();
+    fd.append('file', blob, filename || 'photo.jpg');
+    fd.append('upload_preset', CLOUDINARY.uploadPreset);
+    if (CLOUDINARY.folder) fd.append('folder', CLOUDINARY.folder);
+    return fetch(endpoint, { method: 'POST', body: fd }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!j.secure_url) {
+          throw new Error((j.error && j.error.message) || 'Cloudinary upload failed');
+        }
+        return { url: j.secure_url, publicId: j.public_id };
+      });
+    });
+  }
+
+  function photoSrc(p) {
+    if (p && p.url) return p.url;
+    if (p && p.filename) return '/uploads/' + p.filename;
+    return '';
+  }
+
   // ---- UI strings ----
   var UI = {
     zh: {
@@ -59,7 +88,8 @@
       addedOn: '添加于',
       importDone: '导入完成',
       parsing: '正在解析压缩包...',
-      importing: '正在导入'
+      importing: '正在导入',
+      uploading: '正在上传...'
     },
     en: {
       siteTitle: "Zion's Photography",
@@ -85,7 +115,8 @@
       addedOn: 'Added on',
       importDone: 'Import done',
       parsing: 'Parsing zip...',
-      importing: 'Importing'
+      importing: 'Importing',
+      uploading: 'Uploading...'
     }
   };
 
@@ -236,7 +267,7 @@
         var dateStr = p.createdAt
           ? new Date(p.createdAt).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')
           : '';
-        var src = '/uploads/' + p.filename;
+        var src = photoSrc(p);
         html += '<figure class="photo-card" data-id="' + p.id + '">' +
           '<div class="photo-frame">' +
             '<img src="' + src + '" alt="' + escapeHtml(caption) + '" />' +
@@ -348,7 +379,7 @@
   function lbRender() {
     var p = visiblePhotos[lbIndex];
     if (!p) return;
-    document.getElementById('lbImg').src = '/uploads/' + p.filename;
+    document.getElementById('lbImg').src = photoSrc(p);
     var caption = lang === 'zh'
       ? (p.captionZh || p.captionEn || '')
       : (p.captionEn || p.captionZh || '');
@@ -448,12 +479,26 @@
           var category = FOLDER_MAP[folder];
           if (!category) { unknown++; return; }
           return readEntry(buf, e).then(function (data) {
-            return apiCreate({
-              filename: fname,
-              base64: bytesToBase64(data),
-              category: category,
-              captionZh: '',
-              captionEn: ''
+            var mime = 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
+            var blob = new Blob([data], { type: mime });
+            return cloudinaryUpload(blob, fname).then(function (up) {
+              return apiCreate({
+                filename: fname,
+                url: up.url,
+                publicId: up.publicId,
+                category: category,
+                captionZh: '',
+                captionEn: ''
+              });
+            }).catch(function () {
+              // Cloudinary failed for this one - store it on the server instead
+              return apiCreate({
+                filename: fname,
+                base64: bytesToBase64(data),
+                category: category,
+                captionZh: '',
+                captionEn: ''
+              });
             }).then(function () {
               imported++;
               if (imported % 5 === 0) {
@@ -533,13 +578,29 @@
     document.getElementById('saveBtn').addEventListener('click', function () {
       var file = document.getElementById('fileInput').files[0];
       if (!file) { alert(t('noFile')); return; }
-      fileToBase64(file).then(function (r) {
+      var category = document.getElementById('catSelect').value;
+      var capZh = document.getElementById('capZh').value.trim();
+      var capEn = document.getElementById('capEn').value.trim();
+      showToast(t('uploading'));
+      cloudinaryUpload(file, file.name).then(function (up) {
         return apiCreate({
-          filename: r.filename,
-          base64: r.base64,
-          category: document.getElementById('catSelect').value,
-          captionZh: document.getElementById('capZh').value.trim(),
-          captionEn: document.getElementById('capEn').value.trim()
+          filename: file.name,
+          url: up.url,
+          publicId: up.publicId,
+          category: category,
+          captionZh: capZh,
+          captionEn: capEn
+        });
+      }).catch(function () {
+        // Cloudinary failed - fall back to storing the file on the server
+        return fileToBase64(file).then(function (r) {
+          return apiCreate({
+            filename: r.filename,
+            base64: r.base64,
+            category: category,
+            captionZh: capZh,
+            captionEn: capEn
+          });
         });
       }).then(function (photo) {
         closeModal();

@@ -126,7 +126,18 @@
       importDone: '导入完成',
       parsing: '正在解析压缩包...',
       importing: '正在导入',
-      uploading: '正在上传...'
+      uploading: '正在上传...',
+      lockBtn: '🔒 编辑',
+      unlockBtn: '🔓 编辑中',
+      unlockTitle: '输入编辑密码',
+      unlockHint: '只有你能添加、修改或删除照片。输入密码后本标签页内无需重复输入。',
+      pwLabel: '密码',
+      wrongPw: '密码不对，再试一次',
+      unlock: '解锁',
+      needPw: '请先点右上角「编辑」输入密码',
+      unlocked: '已解锁，可以编辑了',
+      locked: '已锁定编辑',
+      sessionExpired: '登录已过期，请重新输入密码'
     },
     en: {
       siteTitle: "Zion's Photography",
@@ -153,7 +164,18 @@
       importDone: 'Import done',
       parsing: 'Parsing zip...',
       importing: 'Importing',
-      uploading: 'Uploading...'
+      uploading: 'Uploading...',
+      lockBtn: '🔒 Edit',
+      unlockBtn: '🔓 Editing',
+      unlockTitle: 'Enter edit password',
+      unlockHint: 'Only you can add, edit or delete photos. One password per browser tab.',
+      pwLabel: 'Password',
+      wrongPw: 'Wrong password, try again',
+      unlock: 'Unlock',
+      needPw: 'Click "Edit" in the top right and enter the password first',
+      unlocked: 'Unlocked - you can edit now',
+      locked: 'Editing locked',
+      sessionExpired: 'Session expired, please enter the password again'
     }
   };
 
@@ -194,26 +216,103 @@
     });
   }
 
+  // ---- Admin lock ----
+  // Token 存在 sessionStorage：本标签页内刷新/跳转都不用重输，关掉标签页即失效
+  var adminToken = '';
+  try { adminToken = sessionStorage.getItem('zion-admin-token') || ''; } catch (e) {}
+  var isEditing = false;
+
+  function setEditing(on) {
+    isEditing = !!on;
+    document.body.classList.toggle('locked', !isEditing);
+    var b = document.getElementById('lockBtn');
+    if (b) {
+      b.textContent = isEditing ? t('unlockBtn') : t('lockBtn');
+      b.classList.toggle('unlocked', isEditing);
+    }
+  }
+
+  function sessionExpired() {
+    adminToken = '';
+    try { sessionStorage.removeItem('zion-admin-token'); } catch (e) {}
+    setEditing(false);
+  }
+
+  function openPwModal() {
+    document.getElementById('pwError').hidden = true;
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwModal').hidden = false;
+    setTimeout(function () {
+      var i = document.getElementById('pwInput');
+      if (i) i.focus();
+    }, 60);
+  }
+  function closePwModal() { document.getElementById('pwModal').hidden = true; }
+
+  function tryUnlock() {
+    var pw = document.getElementById('pwInput').value;
+    if (!pw) return;
+    fetch('/api/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { status: r.status, body: j || {} }; });
+    }).then(function (res) {
+      if (res.status === 200 && res.body.token) {
+        adminToken = res.body.token;
+        try { sessionStorage.setItem('zion-admin-token', adminToken); } catch (e) {}
+        setEditing(true);
+        closePwModal();
+        showToast(t('unlocked'));
+        renderGallery();
+      } else {
+        document.getElementById('pwError').hidden = false;
+        document.getElementById('pwInput').value = '';
+        document.getElementById('pwInput').focus();
+      }
+    }).catch(function () {
+      document.getElementById('pwError').hidden = false;
+    });
+  }
+
   // ---- API ----
+  function apiFetch(url, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    if (adminToken) opts.headers['X-Admin-Token'] = adminToken;
+    return fetch(url, opts).then(function (r) {
+      if (r.status === 401) {
+        sessionExpired();
+        showToast(t('sessionExpired'));
+        openPwModal();
+        var e = new Error('unauthorized');
+        e.unauthorized = true;
+        throw e;
+      }
+      return r.json();
+    });
+  }
+
   function apiList() {
     return fetch('/api/photos').then(function (r) { return r.json(); });
   }
   function apiCreate(obj) {
-    return fetch('/api/photos', {
+    return apiFetch('/api/photos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(obj)
-    }).then(function (r) { return r.json(); });
+    });
   }
   function apiUpdate(id, obj) {
-    return fetch('/api/photos/' + id, {
+    return apiFetch('/api/photos/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(obj)
-    }).then(function (r) { return r.json(); });
+    });
   }
   function apiDelete(id) {
-    return fetch('/api/photos/' + id, { method: 'DELETE' }).then(function (r) { return r.json(); });
+    return apiFetch('/api/photos/' + id, { method: 'DELETE' });
   }
 
   // ---- i18n ----
@@ -223,6 +322,10 @@
     for (var i = 0; i < nodes.length; i++) {
       var k = nodes[i].getAttribute('data-i18n');
       if (UI[lang] && UI[lang][k]) nodes[i].textContent = UI[lang][k];
+    }
+    if (isEditing) {
+      var lb = document.getElementById('lockBtn');
+      if (lb) lb.textContent = t('unlockBtn');
     }
     document.title = lang === 'zh' ? 'Zion的摄影记录 · Zion\'s Photography' : 'Zion\'s Photography';
   }
@@ -335,7 +438,10 @@
           e.stopPropagation();
           var id = this.getAttribute('data-del');
           if (!window.confirm(t('deleteConfirm'))) return;
-          apiDelete(id).then(renderGallery);
+          apiDelete(id).then(renderGallery).catch(function (err) {
+            if (err && err.unauthorized) return;
+            alert((lang === 'zh' ? '删除失败：' : 'Delete failed: ') + err.message);
+          });
         });
       }
       var edits = gallery.querySelectorAll('[data-edit]');
@@ -368,7 +474,16 @@
     if (selected && selected !== 'all') sel.value = selected;
   }
 
+  // 未解锁时的统一拦截
+  function needEdit() {
+    if (isEditing) return false;
+    showToast(t('needPw'));
+    openPwModal();
+    return true;
+  }
+
   function openModal() {
+    if (needEdit()) return;
     document.getElementById('modal').hidden = false;
     fillCatSelect(document.getElementById('catSelect'), currentCat);
     resetModalForm();
@@ -491,6 +606,7 @@
   }
 
   function handleImport(file) {
+    if (needEdit()) return;
     showToast(t('parsing'));
     file.arrayBuffer().then(function (buf) {
       var entries;
@@ -595,6 +711,37 @@
   // ---- Init ----
   function init() {
     applyI18n();
+    setEditing(false);
+
+    // ---- Admin lock wiring ----
+    document.getElementById('lockBtn').addEventListener('click', function () {
+      if (isEditing) {
+        sessionExpired();
+        showToast(t('locked'));
+        renderGallery();
+      } else {
+        openPwModal();
+      }
+    });
+    document.getElementById('pwClose').addEventListener('click', closePwModal);
+    document.getElementById('pwCancel').addEventListener('click', closePwModal);
+    document.getElementById('pwModal').addEventListener('click', function (e) {
+      if (e.target.id === 'pwModal') closePwModal();
+    });
+    document.getElementById('pwOk').addEventListener('click', tryUnlock);
+    document.getElementById('pwInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); tryUnlock(); }
+    });
+
+    // 已保存的令牌：静默校验，有效则直接进入编辑态
+    if (adminToken) {
+      fetch('/api/session', { headers: { 'X-Admin-Token': adminToken } })
+        .then(function (r) {
+          if (r.status === 200) { setEditing(true); renderGallery(); }
+          else sessionExpired();
+        })
+        .catch(function () { sessionExpired(); });
+    }
 
     document.getElementById('langToggle').addEventListener('click', function () {
       lang = lang === 'zh' ? 'en' : 'zh';
@@ -661,6 +808,7 @@
         }
         showToast(t('saved'));
       }).catch(function (err) {
+        if (err && err.unauthorized) return;
         alert((lang === 'zh' ? '保存失败：' : 'Save failed: ') + err.message);
       });
     });
@@ -685,11 +833,13 @@
         }
         showToast(t('saved'));
       }).catch(function (err) {
+        if (err && err.unauthorized) return;
         alert((lang === 'zh' ? '保存失败：' : 'Save failed: ') + err.message);
       });
     });
 
     document.getElementById('importBtn').addEventListener('click', function () {
+      if (needEdit()) return;
       document.getElementById('importInput').click();
     });
     document.getElementById('importInput').addEventListener('change', function (e) {
@@ -716,6 +866,7 @@
     dropZone.addEventListener('drop', function (e) {
       var files = e.dataTransfer && e.dataTransfer.files;
       if (!files || !files.length) return;
+      if (needEdit()) return;
       var zip = null;
       for (var i = 0; i < files.length; i++) {
         if (files[i].name.toLowerCase().endsWith('.zip')) { zip = files[i]; break; }

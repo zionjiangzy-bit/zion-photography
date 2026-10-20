@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Serif+SC:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
-<body>
+<body class="locked">
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark">📷</span>
@@ -21,6 +21,7 @@
       </div>
     </div>
     <div class="header-actions">
+      <button id="lockBtn" class="ghost-btn lock-btn" data-i18n="lockBtn">🔒 编辑</button>
       <button id="langToggle" class="ghost-btn" data-i18n="langBtn">EN</button>
       <button id="importBtn" class="ghost-btn" data-i18n="importBtn">批量导入</button>
       <button id="addBtn" class="primary-btn" data-i18n="addPhoto">添加照片</button>
@@ -107,6 +108,28 @@
     </div>
   </div>
 
+  <!-- Password Modal -->
+  <div class="modal-overlay" id="pwModal" hidden>
+    <div class="modal modal-sm">
+      <div class="modal-head">
+        <h2 data-i18n="unlockTitle">输入编辑密码</h2>
+        <button class="icon-btn" id="pwClose" aria-label="close">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="pw-hint" data-i18n="unlockHint">只有你能添加、修改或删除照片。输入密码后本标签页内无需重复输入。</p>
+        <label class="field">
+          <span data-i18n="pwLabel">密码</span>
+          <input type="password" id="pwInput" autocomplete="current-password" />
+        </label>
+        <p class="pw-error" id="pwError" hidden data-i18n="wrongPw">密码不对，再试一次</p>
+      </div>
+      <div class="modal-foot">
+        <button class="ghost-btn" id="pwCancel" data-i18n="cancel">取消</button>
+        <button class="primary-btn" id="pwOk" data-i18n="unlock">解锁</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Lightbox (double-click a photo to enlarge) -->
   <div class="lightbox" id="lightbox" hidden>
     <button class="lb-close" id="lbClose" aria-label="close">×</button>
@@ -124,6 +147,6 @@
   <input type="file" id="importInput" accept=".zip" hidden />
   <div class="toast" id="toast" hidden></div>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

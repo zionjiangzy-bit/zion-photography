@@ -49,6 +49,20 @@ body{
 }
 .primary-btn:hover{background:var(--coffee);}
 
+/* ---- Admin lock ---- */
+.lock-btn.unlocked{
+  border-color:var(--mocha);background:var(--foam);color:var(--espresso);font-weight:600;
+}
+/* 未解锁：访客看不到任何编辑入口 */
+body.locked #addBtn,
+body.locked #importBtn,
+body.locked .del-btn,
+body.locked .edit-btn{display:none !important;}
+.modal-sm{max-width:380px;}
+.pw-hint{font-size:13px;line-height:1.6;color:var(--muted);}
+.pw-error{font-size:13px;color:#A6402F;font-weight:600;}
+.pw-error[hidden]{display:none;}
+
 /* ---- Layout ---- */
 .layout{display:flex;min-height:calc(100vh - 64px);}
 .sidebar{
@@ -127,7 +141,7 @@ body{
 .modal-body{padding:22px 24px;display:flex;flex-direction:column;gap:14px;}
 .field{display:flex;flex-direction:column;gap:6px;}
 .field>span{font-size:12px;font-weight:600;color:var(--coffee);letter-spacing:.04em;}
-.field select,.field input[type=file],.field textarea{
+.field select,.field input[type=file],.field input[type=password],.field textarea{
   font-family:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line);
   border-radius:10px;background:#fff;color:var(--text);
 }

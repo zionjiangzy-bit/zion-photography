@@ -14,6 +14,50 @@ const DATA = path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA, 'photos.json');
 const PORT = process.env.PORT || 8765;
 
+// ---- Admin lock (owner-only editing) ----
+// 改密码：在 Cloudflare/Render 等平台配环境变量 ADMIN_PASSWORD=你的新密码，
+// 或改下面的 DEFAULT_PASSWORD_HASH 为 hashPassword('你的新密码') 的输出。
+const ADMIN_SALT = 'zion-foto::';
+const DEFAULT_PASSWORD = 'zion2026';
+const DEFAULT_PASSWORD_HASH =
+  '2ceb809f88ba87fade71121bc12a740979ff28c122b472c2bd92d61e4620f13f'; // sha256(salt + 'zion2026')
+
+function hashPassword(pw) {
+  return crypto.createHash('sha256').update(ADMIN_SALT + String(pw)).digest('hex');
+}
+const ADMIN_HASH = process.env.ADMIN_PASSWORD_HASH
+  || (process.env.ADMIN_PASSWORD ? hashPassword(process.env.ADMIN_PASSWORD) : DEFAULT_PASSWORD_HASH);
+
+function checkPassword(pw) {
+  const h = hashPassword(pw);
+  if (h.length !== ADMIN_HASH.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(h), Buffer.from(ADMIN_HASH));
+  } catch (e) {
+    return false;
+  }
+}
+
+// Token = 解锁凭证，只在内存里保存（服务重启后需重新输入密码）
+const TOKENS = new Map();
+const TOKEN_TTL = 12 * 60 * 60 * 1000; // 12 小时
+function issueToken() {
+  const tk = crypto.randomBytes(24).toString('hex');
+  TOKENS.set(tk, Date.now() + TOKEN_TTL);
+  return tk;
+}
+function tokenOf(req) {
+  return req.headers['x-admin-token'] || '';
+}
+function isAdmin(req) {
+  const tk = tokenOf(req);
+  if (!tk) return false;
+  const exp = TOKENS.get(tk);
+  if (!exp) return false;
+  if (Date.now() > exp) { TOKENS.delete(tk); return false; }
+  return true;
+}
+
 fs.mkdirSync(UPLOADS, { recursive: true });
 fs.mkdirSync(DATA, { recursive: true });
 if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, '[]');
@@ -64,10 +108,20 @@ function noCache(res) {
   res.setHeader('Expires', '0');
 }
 
+// 这些文件不对外暴露（含服务端源码、密码哈希、元数据）
+const BLOCKED = new Set([
+  'server.js', 'package.json', 'render.yaml', 'cloudflare-worker.js',
+  'package-lock.json', '.gitignore'
+]);
+
 function serveStatic(res, urlPath) {
   let filePath = path.join(ROOT, urlPath);
   if (urlPath === '/' || urlPath === '') filePath = path.join(ROOT, 'index.html');
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end('forbidden'); return; }
+  if (BLOCKED.has(path.basename(filePath)) || urlPath.startsWith('/data/')
+      || urlPath.startsWith('/.') || urlPath.startsWith('/.git')) {
+    res.writeHead(404); res.end('not found'); return;
+  }
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     res.writeHead(404); res.end('not found'); return;
   }
@@ -91,9 +145,36 @@ function serveUpload(res, name) {
 function handleApi(req, res, url) {
   const p = url.pathname;
 
-  // GET list
+  // GET list - public (visitors can browse)
   if (req.method === 'GET' && p === '/api/photos') {
     sendJSON(res, 200, loadDB());
+    return;
+  }
+
+  // POST unlock: {password} -> {token}
+  if (req.method === 'POST' && p === '/api/unlock') {
+    readBody(req, 4096).then((raw) => {
+      let body = {};
+      try { body = JSON.parse(raw || '{}'); } catch (e) {}
+      if (!checkPassword(body.password || '')) {
+        sendJSON(res, 401, { error: 'wrong password' });
+        return;
+      }
+      sendJSON(res, 200, { token: issueToken() });
+    }).catch(() => sendJSON(res, 400, { error: 'bad request' }));
+    return;
+  }
+
+  // GET session: is this token still valid?
+  if (req.method === 'GET' && p === '/api/session') {
+    if (isAdmin(req)) { sendJSON(res, 200, { ok: true }); return; }
+    sendJSON(res, 401, { error: 'unauthorized' });
+    return;
+  }
+
+  // Everything below can change data -> owner only
+  if (!isAdmin(req)) {
+    sendJSON(res, 401, { error: 'unauthorized' });
     return;
   }
 

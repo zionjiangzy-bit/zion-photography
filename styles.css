@@ -13,7 +13,9 @@
   --radius:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;}
+/* 注意：这里必须是 min-height，不能用 height:100%
+   否则 body 高度被锁成「一屏」，顶栏的 sticky 滚动一屏后就失效 */
+html,body{min-height:100%;}
 body{
   font-family:'Inter','Noto Serif SC',system-ui,sans-serif;
   background:var(--cream);

@@ -69,6 +69,9 @@ body.locked .edit-btn{display:none !important;}
   width:240px;flex-shrink:0;padding:26px 16px;
   border-right:1px solid var(--line);
   background:linear-gradient(180deg,var(--foam),var(--cream));
+  /* 固定在左侧，不随主内容滚动（65px = 顶栏高度） */
+  position:sticky;top:65px;align-self:flex-start;
+  max-height:calc(100vh - 65px);overflow-y:auto;
 }
 .nav-group{margin-top:18px;}
 .nav-group:first-child{margin-top:0;}
@@ -212,7 +215,10 @@ body.locked .edit-btn{display:none !important;}
 /* ---- Responsive ---- */
 @media (max-width:760px){
   .layout{flex-direction:column;}
-  .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--line);display:flex;gap:8px;overflow-x:auto;}
+  .sidebar{
+    width:100%;border-right:none;border-bottom:1px solid var(--line);display:flex;gap:8px;overflow-x:auto;
+    position:static;max-height:none;overflow-y:visible;
+  }
   .nav-group{margin-top:0;display:flex;gap:8px;}
   .nav-group-title{display:none;}
   .nav-item{margin-bottom:0;white-space:nowrap;}

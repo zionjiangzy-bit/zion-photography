@@ -3,12 +3,16 @@
 // - Stores photos on disk (./uploads) and metadata in ./data/photos.json
 // - Exposes a small REST API consumed by app.js
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+// ESM：package.json 里有 "type":"module"（Vite 需要），所以这里用 import
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
+const DIST = path.join(ROOT, 'dist');          // Vite 构建产物（React 版）
 const UPLOADS = path.join(ROOT, 'uploads');
 const DATA = path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA, 'photos.json');
@@ -116,15 +120,20 @@ const BLOCKED = new Set([
 ]);
 
 function serveStatic(res, urlPath) {
-  let filePath = path.join(ROOT, urlPath);
-  if (urlPath === '/' || urlPath === '') filePath = path.join(ROOT, 'index.html');
+  // 有构建产物就托管 dist（React 版），否则退回根目录（旧静态版）
+  const base = fs.existsSync(path.join(DIST, 'index.html')) ? DIST : ROOT;
+  let filePath = path.join(base, urlPath);
+  if (urlPath === '/' || urlPath === '') filePath = path.join(base, 'index.html');
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end('forbidden'); return; }
   if (BLOCKED.has(path.basename(filePath)) || urlPath.startsWith('/data/')
-      || urlPath.startsWith('/.') || urlPath.startsWith('/.git')) {
+      || urlPath.startsWith('/src/') || urlPath.startsWith('/.') || urlPath.startsWith('/.git')) {
     res.writeHead(404); res.end('not found'); return;
   }
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    res.writeHead(404); res.end('not found'); return;
+    // SPA 兜底：未知路径回首页（hash 路由不会走到这，但 /assets 缺失时更安全）
+    const fallback = path.join(base, 'index.html');
+    if (fs.existsSync(fallback)) filePath = fallback;
+    else { res.writeHead(404); res.end('not found'); return; }
   }
   const ext = path.extname(filePath).toLowerCase();
   noCache(res);

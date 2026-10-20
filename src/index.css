@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 注意：必须用 min-height，不能用 height:100%
+   否则 body 高度被锁成「一屏」，sticky 顶栏滚过一屏就失效 */
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: #f7f1e8;
+  color: #4a3526;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 细滚动条，配合拿铁色 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(127, 92, 61, 0.28);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

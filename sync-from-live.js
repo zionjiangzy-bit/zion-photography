@@ -1,10 +1,12 @@
 // 把线上已有的照片清单拉回本地，保证每次改版发布都以线上数据为基础，不会覆盖丢图。
 // 用法：node sync-from-live.js
 // 说明：线上是“照片清单”的唯一真相，本地 data/photos.json 只是发布时的兜底副本。
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
+import fs from 'fs';
+import path from 'path';
+import https from 'https';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LIVE = 'https://zion-fotogallery.app.workbuddy.host/api/photos?sharecode=YY2EGNUGIL';
 const ROOT = __dirname;
 const DB = path.join(ROOT, 'data', 'photos.json');
@@ -12,7 +14,7 @@ const BACKUP_DIR = path.join(ROOT, '.workbuddy', 'backups');
 
 function get(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, { rejectUnauthorized: true }, (res) => {
+    https.get(url, (res) => {
       let s = '';
       res.on('data', (c) => { s += c; });
       res.on('end', () => {

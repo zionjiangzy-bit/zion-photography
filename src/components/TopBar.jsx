@@ -19,11 +19,12 @@ export default function TopBar({ lang, t, isEditing, onToggleLock, onAdd, onImpo
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
       className={[
-        'sticky top-0 z-40 flex items-center justify-between border-b border-coffee/15',
+        'sticky top-0 z-40 flex items-center justify-between border-b border-hairline',
         'transition-all duration-300 ease-out',
+        // Bugatti：静止时顶栏完全透明，只留一条 hairline；滚动后才浮出黑底
         scrolled
-          ? 'bg-cream/80 backdrop-blur-xl shadow-soft py-2.5 px-7'
-          : 'bg-cream/95 backdrop-blur-md py-3.5 px-7'
+          ? 'bg-canvas/90 backdrop-blur-xl py-2.5 px-7'
+          : 'bg-transparent py-3.5 px-7'
       ].join(' ')}
     >
       <div className="flex items-center gap-3">
@@ -33,9 +34,9 @@ export default function TopBar({ lang, t, isEditing, onToggleLock, onAdd, onImpo
             text={t('siteTitle')}
             animateBy={lang === 'zh' ? 'chars' : 'words'}
             delay={45}
-            className="font-cn font-bold text-espresso text-lg sm:text-xl"
+            className="font-display font-normal tracking-[1px] text-ink text-lg sm:text-xl"
           />
-          <span className="text-[11px] uppercase tracking-[.12em] text-muted">{t('siteSub')}</span>
+          <span className="text-[11px] uppercase tracking-label text-muted">{t('siteSub')}</span>
         </div>
       </div>
 
@@ -45,8 +46,8 @@ export default function TopBar({ lang, t, isEditing, onToggleLock, onAdd, onImpo
           className={[
             'rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors',
             isEditing
-              ? 'border-mocha bg-foam text-espresso font-semibold'
-              : 'border-coffee/15 text-coffee hover:bg-foam'
+              ? 'border-ink bg-ink text-canvas'
+              : 'border-hairline2 text-body hover:border-ink hover:text-ink'
           ].join(' ')}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -65,7 +66,7 @@ export default function TopBar({ lang, t, isEditing, onToggleLock, onAdd, onImpo
 
         <button
           onClick={() => { const l = lang === 'zh' ? 'en' : 'zh'; localStorage.setItem('zion-lang', l); window.location.reload(); }}
-          className="rounded-full border border-coffee/15 px-3.5 py-2 text-[13px] font-medium text-coffee transition-colors hover:bg-foam"
+          className="rounded-full border border-hairline2 px-3.5 py-2 text-[13px] font-medium text-body transition-colors hover:border-ink hover:text-ink"
         >
           {t('langBtn')}
         </button>
@@ -76,7 +77,7 @@ export default function TopBar({ lang, t, isEditing, onToggleLock, onAdd, onImpo
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               onClick={onImport}
-              className="rounded-full border border-coffee/15 px-3.5 py-2 text-[13px] font-medium text-coffee transition-colors hover:bg-foam"
+              className="rounded-full border border-hairline2 px-3.5 py-2 text-[13px] font-medium text-body transition-colors hover:border-ink hover:text-ink"
             >
               {t('importBtn')}
             </motion.button>
@@ -86,7 +87,7 @@ export default function TopBar({ lang, t, isEditing, onToggleLock, onAdd, onImpo
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.97 }}
               onClick={onAdd}
-              className="rounded-full bg-mocha px-4 py-2 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(176,140,104,.4)] transition-colors hover:bg-coffee"
+              className="rounded-full bg-ink px-4 py-2 text-[13px] font-medium text-canvas transition-colors hover:bg-strong"
             >
               {t('addPhoto')}
             </motion.button>

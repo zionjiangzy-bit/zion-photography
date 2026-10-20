@@ -4,7 +4,7 @@ import FadeContent from '../bits/FadeContent.jsx';
 import SpotlightCard from '../bits/SpotlightCard.jsx';
 import { photoSrc } from '../lib/media.js';
 
-const GAP = 26;
+const GAP = 24;       // Bugatti spacing.lg
 const TARGET = 280;   // 每列理想宽度
 const CAPTION = 62;   // 说明 + 日期预留高度
 
@@ -43,9 +43,9 @@ export default function Masonry({ photos, lang, t, isEditing, onEdit, onDelete, 
   }, [photos, cols]);
 
   return (
-    <div ref={ref} className="flex items-start gap-[26px]">
+    <div ref={ref} className="flex items-start gap-[24px]">
       {buckets.map((col, i) => (
-        <div key={i} className="flex min-w-0 flex-1 flex-col gap-[26px]">
+        <div key={i} className="flex min-w-0 flex-1 flex-col gap-[24px]">
           {col.map((p, j) => (
             <FadeContent key={p.id} delay={Math.min(j, 6) * 45} duration={650}>
               <PhotoCard
@@ -77,15 +77,15 @@ function PhotoCard({ photo, lang, t, isEditing, onEdit, onDelete, onOpen }) {
   return (
     <figure className="m-0">
       <SpotlightCard
-        className="rounded-xl2 shadow-soft"
-        spotlightColor="rgba(255,255,255,0.30)"
+        className=""
+        spotlightColor="rgba(255,255,255,0.14)"
         size={280}
       >
         <motion.div
           onDoubleClick={() => onOpen(photo.id)}
-          whileHover={{ scale: 1.015 }}
+          whileHover={{ scale: 1.012 }}
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-          className="relative cursor-zoom-in overflow-hidden rounded-xl2 bg-sand"
+          className="relative cursor-zoom-in overflow-hidden bg-card"
           style={{ aspectRatio: String(ratio) }}
         >
           <img
@@ -100,7 +100,7 @@ function PhotoCard({ photo, lang, t, isEditing, onEdit, onDelete, onOpen }) {
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(photo.id); }}
                 title={t('editTitle')}
-                className="absolute left-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-espresso/70 text-sm text-white opacity-0 transition-opacity hover:bg-espresso group-hover:opacity-100 md:opacity-0 md:hover:opacity-100"
+                className="absolute left-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-canvas/75 text-sm text-ink transition-colors hover:bg-ink hover:text-canvas"
                 style={{ opacity: 1 }}
               >
                 ✎
@@ -108,7 +108,7 @@ function PhotoCard({ photo, lang, t, isEditing, onEdit, onDelete, onOpen }) {
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(photo); }}
                 title={t('deleteConfirm')}
-                className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-espresso/70 text-base text-white transition-colors hover:bg-espresso"
+                className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-canvas/75 text-base text-ink transition-colors hover:bg-ink hover:text-canvas"
                 style={{ opacity: 1 }}
               >
                 ×
@@ -119,10 +119,10 @@ function PhotoCard({ photo, lang, t, isEditing, onEdit, onDelete, onOpen }) {
       </SpotlightCard>
 
       {caption && (
-        <figcaption className="mt-3 font-cn text-sm leading-relaxed text-espresso">{caption}</figcaption>
+        <figcaption className="mt-3 font-cn text-sm leading-relaxed text-body">{caption}</figcaption>
       )}
       {dateStr && (
-        <div className="mt-1 text-[11px] text-muted">{t('addedOn')} {dateStr}</div>
+        <div className="mt-1 text-[11px] tracking-[.04em] text-faint">{t('addedOn')} {dateStr}</div>
       )}
     </figure>
   );

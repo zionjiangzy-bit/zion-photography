@@ -10,19 +10,21 @@ body {
 }
 
 body {
-  background: #f7f1e8;
-  color: #4a3526;
+  background: #000000;
+  color: #ffffff;
   -webkit-font-smoothing: antialiased;
 }
 
-/* 细滚动条，配合拿铁色 */
+/* 细滚动条，配合纯黑画布 */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(127, 92, 61, 0.28);
-  border-radius: 999px;
+  background: #262626;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

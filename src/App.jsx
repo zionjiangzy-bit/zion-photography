@@ -221,7 +221,7 @@ export default function App() {
       })();
 
   return (
-    <div className="min-h-screen bg-cream text-espresso">
+    <div className="min-h-screen bg-canvas text-ink">
       <TopBar
         lang={lang}
         t={t}
@@ -256,18 +256,18 @@ export default function App() {
             if (zip) handleImport(zip);
           }}
         >
-          <section className={`bg-gradient-to-br from-mocha to-coffee px-10 py-12 text-white transition-all max-md:px-6 max-md:py-8 ${drag ? 'outline-dashed outline-4 outline-offset-[-12px] outline-white/60' : ''}`}>
-            <h1 className="font-serif text-[42px] font-bold leading-tight max-md:text-[32px]">
+          <section className={`border-b border-hairline bg-canvas px-10 py-16 text-ink transition-all max-md:px-6 max-md:py-10 ${drag ? 'outline-dashed outline-2 outline-offset-[-12px] outline-ink/60' : ''}`}>
+            <h1 className="font-display text-[42px] font-normal leading-tight tracking-[2.5px] max-md:text-[30px] max-md:tracking-[1.5px]">
               <BlurText text={heroTitle} animateBy={lang === 'zh' ? 'chars' : 'words'} delay={40} />
             </h1>
-            <p className="mt-2 max-w-[600px] text-[15px] text-white/80">{heroTag}</p>
+            <p className="mt-3 max-w-[600px] text-[15px] tracking-[.02em] text-muted">{heroTag}</p>
           </section>
 
-          <section className="px-10 py-8 max-md:px-5">
+          <section className="px-10 py-10 max-md:px-5">
             {visible.length === 0 ? (
-              <div className="py-20 text-center text-muted">
-                <p className="font-cn text-xl text-espresso">{t('empty')}</p>
-                <p className="mt-2 text-sm">{t('emptyHint')}</p>
+              <div className="py-20 text-center">
+                <p className="font-cn text-xl font-normal tracking-[1px] text-ink">{t('empty')}</p>
+                <p className="mt-2 text-sm text-faint">{t('emptyHint')}</p>
               </div>
             ) : (
               <Masonry
@@ -332,7 +332,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-8 left-1/2 z-[100] -translate-x-1/2 rounded-full bg-espresso px-6 py-3 text-sm text-white shadow-soft"
+            className="fixed bottom-8 left-1/2 z-[100] -translate-x-1/2 rounded-full border border-hairline2 bg-raised px-6 py-3 text-sm tracking-[.02em] text-ink"
           >
             {toast}
           </motion.div>

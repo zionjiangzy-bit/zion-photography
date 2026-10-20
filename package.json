@@ -1,0 +1,13 @@
+{
+  "name": "zion-photography",
+  "version": "1.0.0",
+  "description": "Zion's bilingual photography portfolio with server-side photo storage",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}

@@ -99,6 +99,28 @@
     return '';
   }
 
+  // 读原图真实宽高（用于瀑布流按原始比例排版，避免裁切）
+  function measureBlob(blob) {
+    return new Promise(function (resolve) {
+      var done = function (w, h) { resolve(w && h ? { w: w, h: h } : null); };
+      if (typeof createImageBitmap === 'function') {
+        createImageBitmap(blob).then(function (bmp) {
+          done(bmp.width, bmp.height);
+          if (bmp.close) bmp.close();
+        }).catch(function () { resolve(null); });
+        return;
+      }
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        done(img.naturalWidth, img.naturalHeight);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+
   // ---- UI strings ----
   var UI = {
     zh: {
@@ -381,6 +403,53 @@
     }
   }
 
+  // ---- Masonry layout ----
+  // 按「最短列优先」把照片依次放进各列，竖构图和横构图各占自己该有的高度
+  var layoutTimer = null;
+  function scheduleLayout() {
+    if (layoutTimer) clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(layoutMasonry, 120);
+  }
+
+  function layoutMasonry() {
+    var gallery = document.getElementById('gallery');
+    if (!gallery) return;
+    var cards = gallery.querySelectorAll('.photo-card');
+    if (!cards.length) return;
+    var w = gallery.clientWidth;
+    if (!w) return;
+
+    var GAP = 26;
+    var TARGET = 280;                    // 每列理想宽度
+    var CAPTION = 62;                    // 说明 + 日期的预留高度
+    var cols = Math.floor((w + GAP) / (TARGET + GAP));
+    cols = Math.max(1, Math.min(4, cols));
+    var colW = (w - GAP * (cols - 1)) / cols;
+
+    var buckets = [];
+    var heights = [];
+    for (var i = 0; i < cols; i++) {
+      var d = document.createElement('div');
+      d.className = 'gal-col';
+      buckets.push(d);
+      heights.push(0);
+    }
+
+    for (var j = 0; j < cards.length; j++) {
+      var card = cards[j];
+      var idx = 0;
+      for (var k = 1; k < cols; k++) {
+        if (heights[k] < heights[idx] - 0.5) idx = k;
+      }
+      buckets[idx].appendChild(card);
+      var ratio = parseFloat(card.getAttribute('data-ratio')) || 1.3333;
+      heights[idx] += colW / ratio + CAPTION;
+    }
+
+    gallery.innerHTML = '';
+    for (var m = 0; m < cols; m++) gallery.appendChild(buckets[m]);
+  }
+
   // ---- Gallery ----
   function renderGallery() {
     var gallery = document.getElementById('gallery');
@@ -408,8 +477,11 @@
           ? new Date(p.createdAt).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')
           : '';
         var src = photoSrc(p);
-        html += '<figure class="photo-card" data-id="' + p.id + '">' +
-          '<div class="photo-frame">' +
+        var ratio = (p.width && p.height) ? (p.width / p.height) : 0;
+        var frameStyle = ratio ? ' style="aspect-ratio:' + ratio.toFixed(4) + '"' : '';
+        var frameCls = ratio ? '' : ' native';
+        html += '<figure class="photo-card" data-id="' + p.id + '" data-ratio="' + (ratio || '') + '">' +
+          '<div class="photo-frame' + frameCls + '"' + frameStyle + '>' +
             '<img src="' + src + '" alt="' + escapeHtml(caption) + '" />' +
             '<button class="edit-btn" title="' + t('editTitle') + '" data-edit="' + p.id + '">✎</button>' +
             '<button class="del-btn" title="' + t('deleteConfirm') + '" data-del="' + p.id + '">×</button>' +
@@ -419,6 +491,24 @@
         '</figure>';
       });
       gallery.innerHTML = html;
+
+      // 老照片没有尺寸信息：加载后补上比例并重新排版
+      var imgs = gallery.querySelectorAll('.photo-frame.native img');
+      for (var q = 0; q < imgs.length; q++) {
+        imgs[q].addEventListener('load', function () {
+          var frame = this.parentNode;
+          var card = frame.parentNode;
+          var r = this.naturalWidth / this.naturalHeight;
+          if (r && !card.getAttribute('data-ratio')) {
+            card.setAttribute('data-ratio', r.toFixed(4));
+            frame.style.aspectRatio = r.toFixed(4);
+            frame.classList.remove('native');
+            scheduleLayout();
+          }
+        });
+      }
+
+      layoutMasonry();
 
       // double-click a photo to open the lightbox
       var frames = gallery.querySelectorAll('.photo-frame');
@@ -643,23 +733,29 @@
         return readEntry(buf, task.e).then(function (data) {
           var mime = 'image/' + (task.ext === 'jpg' ? 'jpeg' : task.ext);
           var blob = new Blob([data], { type: mime });
-          return cloudinaryUpload(blob, task.fname).then(function (up) {
-            return apiCreate({
-              filename: task.fname,
-              url: up.url,
-              publicId: up.publicId,
-              category: task.category,
-              captionZh: '',
-              captionEn: ''
-            });
-          }).catch(function () {
-            // Cloudinary failed for this one - store it on the server instead
-            return apiCreate({
-              filename: task.fname,
-              base64: bytesToBase64(data),
-              category: task.category,
-              captionZh: '',
-              captionEn: ''
+          return measureBlob(blob).then(function (dim) {
+            return cloudinaryUpload(blob, task.fname).then(function (up) {
+              return apiCreate({
+                filename: task.fname,
+                url: up.url,
+                publicId: up.publicId,
+                category: task.category,
+                captionZh: '',
+                captionEn: '',
+                width: dim ? dim.w : null,
+                height: dim ? dim.h : null
+              });
+            }).catch(function () {
+              // Cloudinary failed for this one - store it on the server instead
+              return apiCreate({
+                filename: task.fname,
+                base64: bytesToBase64(data),
+                category: task.category,
+                captionZh: '',
+                captionEn: '',
+                width: dim ? dim.w : null,
+                height: dim ? dim.h : null
+              });
             });
           }).then(function () {
             imported++;
@@ -779,24 +875,30 @@
       var capZh = document.getElementById('capZh').value.trim();
       var capEn = document.getElementById('capEn').value.trim();
       showToast(t('uploading'));
-      cloudinaryUpload(file, file.name).then(function (up) {
-        return apiCreate({
-          filename: file.name,
-          url: up.url,
-          publicId: up.publicId,
-          category: category,
-          captionZh: capZh,
-          captionEn: capEn
-        });
-      }).catch(function () {
-        // Cloudinary failed - fall back to storing the file on the server
-        return fileToBase64(file).then(function (r) {
+      measureBlob(file).then(function (dim) {
+        return cloudinaryUpload(file, file.name).then(function (up) {
           return apiCreate({
-            filename: r.filename,
-            base64: r.base64,
+            filename: file.name,
+            url: up.url,
+            publicId: up.publicId,
             category: category,
             captionZh: capZh,
-            captionEn: capEn
+            captionEn: capEn,
+            width: dim ? dim.w : null,
+            height: dim ? dim.h : null
+          });
+        }).catch(function () {
+          // Cloudinary failed - fall back to storing the file on the server
+          return fileToBase64(file).then(function (r) {
+            return apiCreate({
+              filename: r.filename,
+              base64: r.base64,
+              category: category,
+              captionZh: capZh,
+              captionEn: capEn,
+              width: dim ? dim.w : null,
+              height: dim ? dim.h : null
+            });
           });
         });
       }).then(function (photo) {
@@ -897,6 +999,7 @@
     });
 
     window.addEventListener('hashchange', route);
+    window.addEventListener('resize', scheduleLayout);
     route();
   }
 

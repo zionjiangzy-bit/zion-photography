@@ -101,12 +101,18 @@ body.locked .edit-btn{display:none !important;}
 
 /* ---- Gallery ---- */
 .gallery-wrap{padding:32px 40px;}
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:26px;}
+/* Masonry: 每张照片保持自己的原始比例，列高自动找平 */
+.gallery{display:flex;align-items:flex-start;gap:26px;}
+.gal-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:26px;}
 .photo-card{margin:0;}
 .photo-frame{
   position:relative;overflow:hidden;border-radius:var(--radius);
   background:var(--sand);aspect-ratio:4/3;box-shadow:var(--shadow);cursor:zoom-in;
 }
+/* 已知原图比例时由 JS 写 inline aspect-ratio，按原比例显示，不再裁切 */
+/* 老照片没有比例信息时退化为自适应高度，加载完成后再重排 */
+.photo-frame.native{aspect-ratio:auto;}
+.photo-frame.native img{height:auto;}
 .photo-frame img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s;}
 .photo-card:hover .photo-frame img{transform:scale(1.04);}
 .del-btn,.edit-btn{

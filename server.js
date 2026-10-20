@@ -210,6 +210,8 @@ function handleApi(req, res, url) {
         url: body.url || null,
         publicId: body.publicId || null,
         ext: ext,
+        width: Number(body.width) > 0 ? Number(body.width) : null,
+        height: Number(body.height) > 0 ? Number(body.height) : null,
         createdAt: Date.now()
       };
       db.push(photo);

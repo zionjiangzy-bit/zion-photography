@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
-const DIST = path.join(ROOT, 'dist');          // Vite 构建产物（React 版）
+const DIST = path.join(ROOT, 'site');          // Vite 构建产物（React 版，不能叫 dist/build）
 const UPLOADS = path.join(ROOT, 'uploads');
 const DATA = path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA, 'photos.json');

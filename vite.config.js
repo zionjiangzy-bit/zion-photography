@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// 构建产物输出到 dist/，由零依赖的 server.js 单端口托管（同时提供 /api）
+// 构建产物输出到 site/，由零依赖的 server.js 单端口托管（同时提供 /api）
+// 注意：不能叫 dist/ 或 build/ —— 发布工具会把这两个名字当“构建产物”排除掉，
+// 导致线上只剩源码、加载不到 JS。
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'dist',
+    outDir: 'site',
     emptyOutDir: true
   },
   server: {

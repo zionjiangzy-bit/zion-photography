@@ -35,8 +35,8 @@ export const IMG_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tif', 'tiff
 
 export const UI = {
   zh: {
-    siteTitle: 'Zion的摄影记录',
-    siteSub: "Zion's Photography",
+    siteTitle: 'GALLERY',
+    siteSub: '画廊',
     langBtn: 'EN',
     importBtn: '批量导入',
     addPhoto: '添加照片',
@@ -60,8 +60,8 @@ export const UI = {
     parsing: '正在解析压缩包...',
     importing: '正在导入',
     uploading: '正在上传...',
-    lockBtn: '🔒 编辑',
-    unlockBtn: '🔓 编辑中',
+    lockBtn: '编辑',
+    unlockBtn: '编辑中',
     unlockTitle: '输入编辑密码',
     unlockHint: '只有你能添加、修改或删除照片。输入密码后本标签页内无需重复输入。',
     pwLabel: '密码',
@@ -74,8 +74,8 @@ export const UI = {
     all: '全部'
   },
   en: {
-    siteTitle: "Zion's Photography",
-    siteSub: "Zion's photo collection",
+    siteTitle: 'GALLERY',
+    siteSub: '画廊',
     langBtn: '中文',
     importBtn: 'Import Zip',
     addPhoto: 'Add Photo',
@@ -99,8 +99,8 @@ export const UI = {
     parsing: 'Parsing zip...',
     importing: 'Importing',
     uploading: 'Uploading...',
-    lockBtn: '🔒 Edit',
-    unlockBtn: '🔓 Editing',
+    lockBtn: 'Edit',
+    unlockBtn: 'Editing',
     unlockTitle: 'Enter edit password',
     unlockHint: 'Only you can add, edit or delete photos. One password per browser tab.',
     pwLabel: 'Password',

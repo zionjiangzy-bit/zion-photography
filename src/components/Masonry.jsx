@@ -100,10 +100,10 @@ function PhotoCard({ photo, lang, t, isEditing, onEdit, onDelete, onOpen }) {
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(photo.id); }}
                 title={t('editTitle')}
-                className="absolute left-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-canvas/75 text-sm text-ink transition-colors hover:bg-ink hover:text-canvas"
+                className="absolute left-2.5 top-2.5 flex h-7 items-center justify-center bg-canvas/80 px-2.5 text-[10px] font-medium uppercase tracking-[0.16em] text-ink transition-colors hover:bg-ink hover:text-canvas"
                 style={{ opacity: 1 }}
               >
-                ✎
+                EDIT
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(photo); }}

@@ -27,17 +27,16 @@ export default function TopBar({ lang, t, isEditing, onToggleLock, onAdd, onImpo
           : 'bg-transparent py-3.5 px-7'
       ].join(' ')}
     >
-      <div className="flex items-center gap-3">
-        <span className="text-2xl sm:text-[26px]">📷</span>
-        <div className="flex flex-col leading-[1.15]">
-          <BlurText
-            text={t('siteTitle')}
-            animateBy={lang === 'zh' ? 'chars' : 'words'}
-            delay={45}
-            className="font-display font-normal tracking-[1px] text-ink text-lg sm:text-xl"
-          />
-          <span className="text-[11px] uppercase tracking-label text-muted">{t('siteSub')}</span>
-        </div>
+      <div className="flex flex-col leading-[1.1]">
+        <BlurText
+          text={t('siteTitle')}
+          animateBy="chars"
+          delay={55}
+          className="font-cn text-[19px] font-bold uppercase tracking-[3px] text-ink sm:text-[22px]"
+        />
+        <span className="mt-0.5 font-cn text-[11px] font-medium tracking-[0.34em] text-muted">
+          {t('siteSub')}
+        </span>
       </div>
 
       <div className="flex items-center gap-2.5">

@@ -67,7 +67,9 @@ console.log('目标        :', target);
 console.log('root 内容长度:', text.length);
 console.log('渲染 img 数 :', imgs.length);
 console.log('渲染 button :', buttons.length);
-console.log('含站点标题  :', text.includes('Zion'));
+console.log('含站点标题  :', text.includes('GALLERY') && text.includes('画廊'));
+const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u;
+console.log('页面无 emoji:', !EMOJI.test(text));
 console.log('背景是否黑底:', win.document.body.innerHTML.includes('bg-canvas'));
 console.log('运行时错误  :', errors.length ? errors.slice(0, 5) : '无');
 
